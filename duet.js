@@ -662,7 +662,7 @@ let displayMenu = function() {
 }
 
 let gamecontrol = function(e) {
-  if(e.keyCode == 97) {
+  if(e.keyCode == 97 || e.keyCode == 49) {
     if(gameStarted == false) {
       let game = new Game(canvas);
       game.start();
@@ -670,7 +670,7 @@ let gamecontrol = function(e) {
       game.display();
     }
   }
-  if(e.keyCode == 98) {
+  if(e.keyCode == 98 || e.keyCode == 50) {
     if(gameStarted == false) {
       let game = new Game(canvas, 2);
       game.start();
@@ -678,7 +678,7 @@ let gamecontrol = function(e) {
       game.display();
     }
   }
-  if(e.keyCode == 99) {
+  if(e.keyCode == 99 || e.keyCode == 51) {
     if(gameStarted == false) {
       displayHighScores();
     }
