@@ -22,7 +22,10 @@
 	window.setZeroTimeout = setZeroTimeout;
 })();
 
-let FPS = 60;
+let FPS = 90;
+let highScores = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+let gameStarted = false;
+let canvas = null;
 let speed = function(fps) {
   FPS = parseInt(fps);
 }
@@ -69,10 +72,12 @@ class DotGroup {
   constructor(center, orbitRadius, angularVelocity, dotRadius, numberOfDots = 2) {
     this.center = center;
     this.orbitRadius = orbitRadius;
+    this.originalRadius = orbitRadius;
     this.dotRadius = dotRadius;
     this.numberOfDots = numberOfDots;
     this.angle = 0;
     this.angularVelocity = angularVelocity;
+    this.originalAV = angularVelocity;
     this.direction = 0;
     this.dots = [];
     this.createDots();
@@ -119,6 +124,23 @@ class DotGroup {
       2*Math.PI
     ];
   }
+
+  combineDots() {
+    this.orbitRadius -= 1;
+    this.angularVelocity = 0.2;
+    this.direction = this.direction || 1;
+    let self = this;
+    setTimeout(function() {
+      if(self.orbitRadius <= 0) {
+        self.orbitRadius = self.originalRadius;
+        self.angularVelocity = self.originalAV;
+        self.direction = 0;
+        self.angle = 0;
+      } else {
+        self.combineDots();
+      }
+    }, 1000/FPS);
+  }
 }
 
 class Obstacle {
@@ -129,7 +151,7 @@ class Obstacle {
     this.angle = 0;
     this.angularVelocity = angularVelocity;
     if(this.angularVelocity != 0) {
-      this.angle = 1;
+      //this.angle = Math.PI*(2*(angularVelocity > 0) - 1);
     }
 
     // Define Vector Helper functions.
@@ -257,26 +279,32 @@ class Obstacle {
 }
 
 class Game {
-  constructor(canvas, score = 0) {
+  constructor(canvas, players = 1, score = 0) {
     let self = this;
     this.canvas = canvas;
     document.addEventListener("keydown", function(e) { self.setDirection(e, self) }, true);
     document.addEventListener("keyup", function(e) { self.stopRotation(e, self) }, true);
     this.ctx = this.canvas.getContext("2d");
+  	this.ctx.font="20px Oswald, sans-serif";
     this.width = this.canvas.width;
     this.height = this.canvas.height;
     this.score = score;
-    this.velocity = FPS/12;
+    this.velocityFactor = 5;
+    this.velocity = this.velocityFactor*60/FPS;
     this.shortSpawnInterval = 30*(5/this.velocity);
     this.longSpawnInterval = 60*(5/this.velocity);
+    this.combineInterval = 80*(5/this.velocity);
     this.intervalType = 1; // 0 - Short, 1 - Long
     this.interval = 0;
-    this.paused = true;
+    this.paused = false;
+
+    this.players = players; // 1 - Single Player, 2 - MultiPlayer
+    this.scores = [];
 
     this.numDots = 2;
     this.dotGroupRadius = Math.round(this.width * 0.25);
     this.dotRadius = Math.round(this.width/30);
-    this.dotAngularVelocity = 1.5*this.velocity/this.dotGroupRadius;
+    this.dotAngularVelocity = Math.PI/this.shortSpawnInterval;
     this.dotGroup = null;
 
     this.obstacles = [];
@@ -284,7 +312,7 @@ class Game {
       // Left Long Bar
       [
         [Math.round(this.width*0.26), 0],
-        [Math.round(this.width*0.52), Math.round(this.height/20)],
+        [Math.round(this.width*0.52), Math.round(this.height/25)],
         this.velocity
       ],
       // Right Long Bar
@@ -337,7 +365,71 @@ class Game {
         this.velocity,
         - this.dotAngularVelocity*0.9
       ]
-    ]
+    ];
+    this.powerupTypes = [
+
+    ];
+  }
+
+  updateObstacleTypes() {
+    this.obstacleTypes = [
+      // Left Long Bar
+      [
+        [Math.round(this.width*0.26), 0],
+        [Math.round(this.width*0.52), Math.round(this.height/25)],
+        this.velocity
+      ],
+      // Right Long Bar
+      [
+        [this.width - Math.round(this.width*0.26), 0],
+        [Math.round(this.width*0.52), Math.round(this.height/25)],
+        this.velocity
+      ],
+      // Left Small Bar
+      [
+        [Math.round(this.width/8), 0],
+        [Math.round(this.width/4), Math.round(this.height/25)],
+        this.velocity
+      ],
+      // Right Small Bar
+      [
+        [this.width - Math.round(this.width/8), 0],
+        [Math.round(this.width/4), Math.round(this.height/25)],
+        this.velocity
+      ],
+      // Center Small Bar
+      [
+        [Math.round(this.width/2), 0],
+        [Math.round(this.width/4), Math.round(this.height/25)],
+        this.velocity
+      ],
+      // Left Square
+      [
+        [Math.round(this.width/3), 0],
+        [Math.round(this.width/5), Math.round(this.width/6)],
+        this.velocity
+      ],
+      // Right Square
+      [
+        [this.width - Math.round(this.width/3), 0],
+        [Math.round(this.width/5), Math.round(this.width/6)],
+        this.velocity
+      ],
+      // Center CCW Rotating Long Bar
+      [
+        [Math.round(this.width/2), 0],
+        [Math.round(this.width*0.5), Math.round(this.height/25)],
+        this.velocity,
+        this.dotAngularVelocity*0.9
+      ],
+      // Center CW Rotating Long Bar
+      [
+        [Math.round(this.width/2), 0],
+        [Math.round(this.width*0.5), Math.round(this.height/25)],
+        this.velocity,
+        - this.dotAngularVelocity*0.9
+      ]
+    ];
   }
 
   setDirection(e, self) {
@@ -346,6 +438,13 @@ class Game {
     }
     if(e.keyCode == 39) {
       self.dotGroup.direction = 1;
+    }
+    if(e.keyCode == 80) {
+      self.paused = true;
+    }
+    if(e.keyCode == 82 && self.paused == true) {
+      self.paused = false;
+      self.update();
     }
   }
 
@@ -370,12 +469,17 @@ class Game {
       this.numDots);
     this.obstacles = [];
     this.obstacleId = 0;
+    gameStarted = true;
   }
 
   update() {
+    if(gameStarted == false || this.paused == true) {
+      return;
+    }
+    this.changeHighScores();
     this.dotGroup.updateGroup();
     if(this.dotGroup.isHittingObstacle(this.obstacles)) {
-      this.start();
+      this.stop();
     }
 
     for(let i = 0; i < this.obstacles.length; i++) {
@@ -414,6 +518,21 @@ class Game {
     this.interval--;
     this.score++;
 
+    if(this.score%1000 == 0 && this.score <= 3000) {
+      this.velocityFactor += 1;
+      this.velocity = this.velocityFactor*60/FPS;
+      this.shortSpawnInterval = 30*(5/this.velocity);
+      this.longSpawnInterval = 60*(5/this.velocity);
+      this.dotAngularVelocity = Math.PI/this.shortSpawnInterval;
+      this.updateObstacleTypes();
+    }
+
+    if(this.score%1000 == 0) {
+      this.obstacles = [];
+      this.interval = this.combineInterval;
+      this.dotGroup.combineDots();
+    }
+
     let self = this;
     if(FPS == 0){
       setZeroTimeout(function(){
@@ -427,10 +546,33 @@ class Game {
   }
 
   stop() {
+    highScores.push(this.score);
+    this.scores.push(this.score);
+    highScores.sort(function(a, b){return b - a});
+    if(highScores.length > 10) {
+      highScores = highScores.slice(0, 10);
+    }
+    gameStarted = false;
+    this.displayScore(this.score);
+    updateHighScores();
+    localStorage.setItem("hs", JSON.stringify(highScores));
+  }
 
+  changeHighScores() {
+    if(gameStarted == true) {
+      let tempHighscores = highScores.slice(0);
+      highScores.push(this.score);
+      highScores.sort(function(a, b){return b - a});
+      if(highScores.length > 10) {
+        highScores = highScores.slice(0, 10);
+      }
+      updateHighScores();
+      highScores = tempHighscores;
+    }
   }
 
   display() {
+    if(gameStarted == false) return;
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.ctx.fillRect(0, 0, this.width, this.height);
     for(let obstacle of this.obstacles) {
@@ -448,6 +590,14 @@ class Game {
     this.ctx.arc(...this.dotGroup.returnDrawingCoordinates());
     this.ctx.strokeStyle = "#eaeaea";
     this.ctx.stroke();
+    this.ctx.strokeStyle = "#ff0000";
+    this.ctx.lineWidth = 5;
+    this.ctx.beginPath();
+    this.ctx.arc(...this.dotGroup.center, this.dotGroup.orbitRadius, this.dotGroup.angle, this.dotGroup.angle + Math.PI*((this.score%1000)/1000));
+    this.ctx.stroke();
+    this.ctx.beginPath();
+    this.ctx.arc(...this.dotGroup.center, this.dotGroup.orbitRadius, Math.PI + this.dotGroup.angle, Math.PI + this.dotGroup.angle + Math.PI*((this.score%1000)/1000));
+    this.ctx.stroke();
     this.ctx.restore();
 
     for(let dot of this.dotGroup.dots) {
@@ -459,17 +609,133 @@ class Game {
       this.ctx.restore();
     }
 
+    this.ctx.save();
+    this.ctx.fillStyle = "white";
+  	this.ctx.fillText("Score : "+ this.score, 10, 25);
+    this.ctx.restore();
+
     let self = this;
     requestAnimationFrame(function(){
       self.display();
     });
   }
+
+  displayScore() {
+    this.ctx.save();
+    this.ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.ctx.textAlign = "center";
+    this.ctx.fillStyle = "white";
+    this.ctx.fillText("Your Score is: " + this.score, Math.round(canvas.width/2), Math.round(canvas.height/2));
+
+    if(this.players == 1) {
+      this.ctx.fillText("Press b to continue", Math.round(canvas.width/2), Math.round(canvas.height*0.9));
+    } else {
+      this.ctx.fillText("Player " + this.players +" starting in 2s.", Math.round(canvas.width/2), Math.round(canvas.height*0.9));
+      let self = this;
+      setTimeout(function() {
+        self.players--;
+        if(self.players > 0) {
+          self.start();
+          self.update();
+          self.display();
+        }
+      }, 2000);
+    }
+    if(this.scores.length > 1) {
+      this.ctx.fillText("Player " + (this.scores.indexOf(Math.max(...this.scores)) + 1).toString() + " wins.", Math.round(canvas.width/2), Math.round(canvas.height*0.75));
+    }
+    this.ctx.restore();
+  }
 }
 
-window.onload = function() {
-  let canvas = document.querySelector("#duet");
+let displayMenu = function() {
+  ctx = canvas.getContext("2d");
+  this.ctx.font="20px Oswald, sans-serif";
+  ctx.save();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "white";
+  ctx.fillText("1. Single Player", canvas.width/2, canvas.height*0.4);
+  ctx.fillText("2. Multi Player", canvas.width/2, canvas.height*0.5);
+  ctx.fillText("3. High Scores", canvas.width/2, canvas.height*0.6);
+  ctx.restore();
+}
+
+let gamecontrol = function(e) {
+  if(e.keyCode == 97) {
+    if(gameStarted == false) {
+      let game = new Game(canvas);
+      game.start();
+      game.update();
+      game.display();
+    }
+  }
+  if(e.keyCode == 98) {
+    if(gameStarted == false) {
+      let game = new Game(canvas, 2);
+      game.start();
+      game.update();
+      game.display();
+    }
+  }
+  if(e.keyCode == 99) {
+    if(gameStarted == false) {
+      displayHighScores();
+    }
+  }
+  if(e.keyCode == 66) {
+    if(gameStarted == false) {
+      displayMenu();
+    }
+  }
+}
+
+let multiplayerGame = function() {
   let game = new Game(canvas);
   game.start();
   game.update();
   game.display();
+  setTimeout(function afterGameOneIsOver() {
+    if(game.gameOver == false) {
+
+    } else {
+      game.start();
+      game.update();
+      game.display();
+    }
+  }, 1000/FPS);
+}
+
+let updateHighScores = function() {
+  let highScoresDiv = document.querySelector("#high-scores");
+  // Clear List
+  highScoresDiv.innerHTML = "";
+
+  for(let i in highScores) {
+    if(highScores[i] <= 0) return;
+    let textElement = document.createElement("p");
+    textElement.innerHTML = (i).toString() + ". " + highScores[i];
+    highScoresDiv.appendChild(textElement);
+  }
+}
+
+let displayHighScores = function() {
+  ctx = canvas.getContext("2d");
+  this.ctx.font="20px Oswald, sans-serif";
+  ctx.save();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "white";
+  for(let i in highScores) {
+    ctx.fillText(i + ". " + highScores[i], Math.round(canvas.width/2), Math.round(canvas.height/4 + i*canvas.height*0.05));
+  }
+  ctx.restore();
+}
+
+window.onload = function() {
+  canvas = document.querySelector("#duet");
+  displayMenu(canvas);
+  document.addEventListener("keydown", gamecontrol, true);
+  highScores = JSON.parse(localStorage.getItem("hs")) || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  updateHighScores();
 }

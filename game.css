@@ -1,0 +1,12 @@
+.container {
+  display: flex;
+  flex-direction: horizontal
+}
+.hs {
+  background-color: #eaeaea;
+  border-radius: 2px;
+  border: 2px solid;
+  text-align: center;
+  margin-left: 16px;
+  padding: 0px 8px;
+}

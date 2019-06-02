@@ -3,9 +3,20 @@
 <head>
 	<title>Duet</title>
 	<link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="game.css">
 </head>
 <body>
-	<canvas id="duet" width="300" height="600"></canvas> <br/>
+  <p>Press the Corresponding buttons to start the game.</p>
+  <p>Press LeftArrow to rotate CCW and RightArrow to rotate CW</p>
+  <p>Press P to Pause and R to resume.</p>
+  <div class="container">
+	    <canvas id="duet" width="300" height="600"></canvas>
+      <div class="hs">
+        <h1>High Scores</h1>
+        <div id="high-scores">
+        </div>
+      </div>
+  </div>
   <script src="duet.js" charset="utf-8"></script>
 </body>
 </html>
