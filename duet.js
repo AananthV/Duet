@@ -478,6 +478,12 @@ class Game {
     gameStarted = true;
 		this.gameStarted = true;
 		this.paused = false;
+		this.velocityFactor = 5;
+		this.velocity = this.velocityFactor*60/FPS;
+		this.shortSpawnInterval = 30*(5/this.velocity);
+		this.longSpawnInterval = 60*(5/this.velocity);
+		this.combineInterval = 80*(5/this.velocity);
+		this.dotAngularVelocity = Math.PI/this.shortSpawnInterval;
   }
 
   update() {
