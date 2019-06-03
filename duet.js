@@ -24,6 +24,7 @@
 
 let FPS = 90;
 let highScores = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+let game = null;
 let gameStarted = false;
 let canvas = null;
 let speed = function(fps) {
@@ -297,6 +298,7 @@ class Game {
     this.intervalType = 1; // 0 - Short, 1 - Long
     this.interval = 0;
     this.paused = false;
+		this.gameStarted = true;
 
     this.players = players; // 1 - Single Player, 2 - MultiPlayer
     this.scores = [];
@@ -439,7 +441,7 @@ class Game {
     if(e.keyCode == 39) {
       self.dotGroup.direction = 1;
     }
-    if(e.keyCode == 80) {
+    if(e.keyCode == 80 && self.paused == false) {
       self.paused = true;
     }
     if(e.keyCode == 82 && self.paused == true) {
@@ -453,6 +455,10 @@ class Game {
       self.dotGroup.direction = 0;
     }
   }
+
+	init() {
+		this.scores = [];
+	}
 
   start() {
     this.score = 0;
@@ -470,79 +476,82 @@ class Game {
     this.obstacles = [];
     this.obstacleId = 0;
     gameStarted = true;
+		this.gameStarted = true;
+		this.paused = false;
   }
 
   update() {
-    if(gameStarted == false || this.paused == true) {
-      return;
-    }
-    this.changeHighScores();
-    this.dotGroup.updateGroup();
-    if(this.dotGroup.isHittingObstacle(this.obstacles)) {
-      this.stop();
-    }
+    if(this.paused == false && gameStarted == true && this.gameStarted == true) {
+	    this.changeHighScores();
+	    this.dotGroup.updateGroup();
+	    if(this.dotGroup.isHittingObstacle(this.obstacles)) {
+				console.log("lol");
+	      this.stop();
+				return;
+	    }
 
-    for(let i = 0; i < this.obstacles.length; i++) {
-      this.obstacles[i].update();
-      if(this.obstacles[i].isOut(this.height)) {
-        this.obstacles.splice(i, 1);
-      }
-    }
+	    for(let i = 0; i < this.obstacles.length; i++) {
+	      this.obstacles[i].update();
+	      if(this.obstacles[i].isOut(this.height)) {
+	        this.obstacles.splice(i, 1);
+	      }
+	    }
 
-    if(this.interval <= 0) {
-      if(this.intervalType == 0) {
-        let obs = this.obstacleTypes[Math.floor(Math.random() * 7)];
-        this.obstacles.push(new Obstacle(...obs));
+	    if(this.interval <= 0) {
+	      if(this.intervalType == 0) {
+	        let obs = this.obstacleTypes[Math.floor(Math.random() * 7)];
+	        this.obstacles.push(new Obstacle(...obs));
 
-        if(Math.random() < 0.8) {
-          this.interval = this.shortSpawnInterval;
-          this.intervalType = 0;
-        } else {
-          this.interval = this.longSpawnInterval;
-          this.intervalType = 1;
-        }
-      } else if (this.intervalType == 1) {
-        let obs = this.obstacleTypes[7 + Math.floor(Math.random() * 2)];
-        this.obstacles.push(new Obstacle(...obs));
+	        if(Math.random() < 0.8) {
+	          this.interval = this.shortSpawnInterval;
+	          this.intervalType = 0;
+	        } else {
+	          this.interval = this.longSpawnInterval;
+	          this.intervalType = 1;
+	        }
+	      } else if (this.intervalType == 1) {
+	        let obs = this.obstacleTypes[7 + Math.floor(Math.random() * 2)];
+	        this.obstacles.push(new Obstacle(...obs));
 
-        if(Math.random() < 0.8) {
-          this.interval = this.longSpawnInterval;
-          this.intervalType = 0;
-        } else {
-          this.interval = 1.5*this.longSpawnInterval;
-          this.intervalType = 1;
-        }
-      }
-    }
+	        if(Math.random() < 0.8) {
+	          this.interval = this.longSpawnInterval;
+	          this.intervalType = 0;
+	        } else {
+	          this.interval = 1.5*this.longSpawnInterval;
+	          this.intervalType = 1;
+	        }
+	      }
+	    }
 
-    this.interval--;
-    this.score++;
+	    this.interval--;
+	    this.score++;
 
-    if(this.score%1000 == 0 && this.score <= 3000) {
-      this.velocityFactor += 1;
-      this.velocity = this.velocityFactor*60/FPS;
-      this.shortSpawnInterval = 30*(5/this.velocity);
-      this.longSpawnInterval = 60*(5/this.velocity);
-      this.dotAngularVelocity = Math.PI/this.shortSpawnInterval;
-      this.updateObstacleTypes();
-    }
+	    if(this.score%1000 == 0 && this.score <= 3000) {
+	      this.velocityFactor += 1;
+	      this.velocity = this.velocityFactor*60/FPS;
+	      this.shortSpawnInterval = 30*(5/this.velocity);
+	      this.longSpawnInterval = 60*(5/this.velocity);
+	      this.dotAngularVelocity = Math.PI/this.shortSpawnInterval;
+	      this.updateObstacleTypes();
+	    }
 
-    if(this.score%1000 == 0) {
-      this.obstacles = [];
-      this.interval = this.combineInterval;
-      this.dotGroup.combineDots();
-    }
+	    if(this.score%1000 == 0) {
+	      this.obstacles = [];
+	      this.interval = this.combineInterval;
+	      this.dotGroup.combineDots();
+	    }
 
-    let self = this;
-    if(FPS == 0){
-      setZeroTimeout(function(){
-        self.update();
-      });
-    } else {
-      setTimeout(function(){
-        self.update();
-      }, 1000/FPS);
-    }
+	    let self = this;
+	    if(FPS == 0){
+	      setZeroTimeout(function(){
+	        self.update();
+	      });
+	    } else {
+	      setTimeout(function(){
+	        self.update();
+	      }, 1000/FPS);
+	    }
+		}
   }
 
   stop() {
@@ -553,9 +562,13 @@ class Game {
       highScores = highScores.slice(0, 10);
     }
     gameStarted = false;
+		this.gameStarted = false;
     this.displayScore(this.score);
     updateHighScores();
     localStorage.setItem("hs", JSON.stringify(highScores));
+		let self = this;
+    document.removeEventListener("keydown", function(e) { self.setDirection(e, self) });
+    document.removeEventListener("keyup", function(e) { self.stopRotation(e, self) } );
   }
 
   changeHighScores() {
@@ -641,6 +654,7 @@ class Game {
         }
       }, 2000);
     }
+		console.log(this.scores);
     if(this.scores.length > 1) {
       this.ctx.fillText("Player " + (this.scores.indexOf(Math.max(...this.scores)) + 1).toString() + " wins.", Math.round(canvas.width/2), Math.round(canvas.height*0.75));
     }
@@ -664,7 +678,8 @@ let displayMenu = function() {
 let gamecontrol = function(e) {
   if(e.keyCode == 97 || e.keyCode == 49) {
     if(gameStarted == false) {
-      let game = new Game(canvas);
+			game.players = 1;
+			game.init();
       game.start();
       game.update();
       game.display();
@@ -672,7 +687,8 @@ let gamecontrol = function(e) {
   }
   if(e.keyCode == 98 || e.keyCode == 50) {
     if(gameStarted == false) {
-      let game = new Game(canvas, 2);
+			game.players = 2;
+			game.init();
       game.start();
       game.update();
       game.display();
@@ -688,22 +704,6 @@ let gamecontrol = function(e) {
       displayMenu();
     }
   }
-}
-
-let multiplayerGame = function() {
-  let game = new Game(canvas);
-  game.start();
-  game.update();
-  game.display();
-  setTimeout(function afterGameOneIsOver() {
-    if(game.gameOver == false) {
-
-    } else {
-      game.start();
-      game.update();
-      game.display();
-    }
-  }, 1000/FPS);
 }
 
 let updateHighScores = function() {
@@ -734,6 +734,7 @@ let displayHighScores = function() {
 
 window.onload = function() {
   canvas = document.querySelector("#duet");
+	game = new Game(canvas);
   displayMenu(canvas);
   document.addEventListener("keydown", gamecontrol, true);
   highScores = JSON.parse(localStorage.getItem("hs")) || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
