@@ -714,7 +714,7 @@ let updateHighScores = function() {
   for(let i in highScores) {
     if(highScores[i] <= 0) return;
     let textElement = document.createElement("p");
-    textElement.innerHTML = (i).toString() + ". " + highScores[i];
+    textElement.innerHTML = parseInt(i) + 1 + ". " + highScores[i];
     highScoresDiv.appendChild(textElement);
   }
 }
@@ -727,7 +727,7 @@ let displayHighScores = function() {
   ctx.textAlign = "center";
   ctx.fillStyle = "white";
   for(let i in highScores) {
-    ctx.fillText(i + ". " + highScores[i], Math.round(canvas.width/2), Math.round(canvas.height/4 + i*canvas.height*0.05));
+    ctx.fillText(parseInt(i) + 1 + ". " + highScores[i], Math.round(canvas.width/2), Math.round(canvas.height/4 + i*canvas.height*0.05));
   }
   ctx.restore();
 }
